@@ -204,7 +204,7 @@ def weighted_quantile(a, q, w, axis=None, out=None, # new w
     if not _quantile_is_valid(q):
         raise ValueError("Quantiles must be in the range [0, 1]")
     if not _weight_is_valid(w):
-        raise ValueError("Weights must be >= 0")
+        raise ValueError("All the weights must be > 0")
     return _weighted_quantile_unchecked(
         a, q, w, axis, out, overwrite_input, interpolation, keepdims)
 
@@ -237,11 +237,11 @@ def _weight_is_valid(w):
     # avoid expensive reductions, relevant for arrays with < O(1000) elements
     if w.ndim == 1 and w.size < 10:
         for i in range(w.size):
-            if w[i] < 0.0:
+            if w[i] <= 0.0:
                 return False
     else:
         # faster than any()
-        if np.count_nonzero(w < 0.0) or np.count_nonzero(w > 1.0):
+        if np.count_nonzero(w <= 0.0):
             return False
     return True
 
