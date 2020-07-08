@@ -3,7 +3,7 @@
 run `python test.py` to test test_sample.pkl.
 It's a list of dictionaries, whose key values are the the parameters of the function weighted_quantile().
 
-## Generate results from your weighted-quantile function on the HIGGS.csv dataset with random parameters
+## Generate results by your weighted-quantile function on the HIGGS.csv dataset with random parameters
 Please check cross-validation.ipynb  
 
 use `generate_results(a,func,results)` and run the second block to place result in "results".  
