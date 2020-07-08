@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[2]:
+# In[5]:
 
 
 array_function_dispatch = functools.partial(
@@ -115,6 +115,7 @@ def weighted_quantile(a, q, w, axis=None, out=None, # new w
         0 and 1 inclusive.
     w : array_like
         The weights of sample. It must have the same shape with a or be a 1d array for broadcast.
+        When it's a 1d array, axis should be an integer and w.size == a.shape[axis].
         If all elements in w are the same, this function works like np.quantile.
     axis : {int, tuple of int, None}, optional
         Axis or axes along which the quantiles are computed. The
@@ -200,10 +201,6 @@ def weighted_quantile(a, q, w, axis=None, out=None, # new w
     q = np.asanyarray(q)
     w = np.asanyarray(w)
     if w.shape!=a.shape:
-        if axis is None:
-            raise TypeError(
-                "Axis must be specified when shapes of a and weights "
-                "differ.")
         if w.ndim != 1:
             raise TypeError(
                 "1D weights expected when shapes of a and weights differ.")
@@ -211,6 +208,7 @@ def weighted_quantile(a, q, w, axis=None, out=None, # new w
             raise ValueError(
                 "Length of weights not compatible with specified axis.")
         w = np.broadcast_to(w, (a.ndim-1)*(1,) + w.shape)
+        w = w.swapaxes(-1, axis)
 
     if not _quantile_is_valid(q):
         raise ValueError("Quantiles must be in the range [0, 1]")
@@ -414,7 +412,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
         return r
 
 
-# In[4]:
+# In[6]:
 
 
 from  itertools import permutations
