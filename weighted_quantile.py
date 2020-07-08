@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import collections.abc
@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[3]:
+# In[2]:
 
 
 array_function_dispatch = functools.partial(
@@ -200,7 +200,18 @@ def weighted_quantile(a, q, w, axis=None, out=None, # new w
     q = np.asanyarray(q)
     w = np.asanyarray(w)
     if w.shape!=a.shape:
-        raise ValueError("w must have the same shape with array a.")
+        if axis is None:
+            raise TypeError(
+                "Axis must be specified when shapes of a and weights "
+                "differ.")
+        if w.ndim != 1:
+            raise TypeError(
+                "1D weights expected when shapes of a and weights differ.")
+        if w.shape[0] != a.shape[axis]:
+            raise ValueError(
+                "Length of weights not compatible with specified axis.")
+        w = np.broadcast_to(w, (a.ndim-1)*(1,) + w.shape)
+
     if not _quantile_is_valid(q):
         raise ValueError("Quantiles must be in the range [0, 1]")
     if not _weight_is_valid(w):
@@ -243,6 +254,7 @@ def _weight_is_valid(w):
         # faster than any()
         if np.count_nonzero(w <= 0.0):
             return False
+    
     return True
 
 
@@ -400,6 +412,63 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
         return r[0]
     else:
         return r
+
+
+# In[4]:
+
+
+from  itertools import permutations
+import pickle
+
+def add_sample(a,test_sample,out=None,overwrite_input=False,keepdims=False):
+    w = np.ones_like(a)
+    interpolation_list = ['lower','higher','midpoint','nearest','linear']
+    q_list = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+    axis_list = [None]
+    for d in permutations(tuple(range(a.ndim))):
+        axis_list.append(d)
+    for interpolation in interpolation_list:
+        for q in q_list:
+            for axis in axis_list:
+                d ={'a':a,
+                    'q':q,
+                    'w':w,
+                    'axis':axis,
+                    'out':out,
+                    'overwrite_input':overwrite_input,
+                    'interpolation':interpolation,
+                    'keepdims':keepdims}
+                test_sample.append(d)
+def check_equal(param_list,error_samples):
+    f = True
+    for param_dict in param_list:
+        a = param_dict['a']
+        q = param_dict['q']
+        w = param_dict['w']
+        axis = param_dict['axis']
+        out = param_dict['out']
+        overwrite_input = param_dict['overwrite_input']
+        interpolation = param_dict['interpolation']
+        keepdims = param_dict['keepdims']
+        
+        result_a = weighted_quantile(a, q, w, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
+        result_b = np.quantile(a, q, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
+        if not np.allclose(result_a,result_b,equal_nan=True):
+            error_samples.append(param_dict)
+            print("Error occurs!")
+            print("result_a",result_a)
+            print("result_b",result_b)
+            f = False
+    if f:
+        print("Pass!")
+
+
+if __name__=="__main__":
+    with open("test_sample.pkl",'rb') as f:
+        test_sample = pickle.load(f)
+    error_samples = []
+    check_equal(test_sample,error_samples)
+ 
 
 
 # In[ ]:
