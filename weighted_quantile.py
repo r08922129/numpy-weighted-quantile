@@ -114,7 +114,7 @@ def weighted_quantile(a, q, w, axis=None, out=None, # new w
         Quantile or sequence of quantiles to compute, which must be between
         0 and 1 inclusive.
     w : array_like
-        The weights of sample. Must have the same shape with a.
+        The weights of sample. It must have the same shape with a or be a 1d array for broadcast.
         If all elements in w are the same, this function works like np.quantile.
     axis : {int, tuple of int, None}, optional
         Axis or axes along which the quantiles are computed. The
