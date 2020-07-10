@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
+# In[52]:
 
 
 import collections.abc
@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[20]:
+# In[165]:
 
 
 array_function_dispatch = functools.partial(
@@ -302,9 +302,8 @@ def _find_weighted_index(sk,qsn,interpolation='linear'):
                     elif interpolation == 'midpoint':
                         indices.append(0.5*(2*k+1))
                     elif interpolation == 'nearest':
-                        # np.round(0.5)==0 but np.round(1.5)==2.
-                        # To get the same result with np.quantile(), test if k==0 and |q*S_n-S_k| == |q*S_n*S_{k+1}|
-                        if qsn_j-sk_j[k] < sk_j[k+1]-qsn_j or (k==0 and qsn_j-sk_j[k] ==sk_j[k+1]-qsn_j):
+                        # To get the same result with np.quantile(), test if k%2==0 and |q*S_n-S_k| == |q*S_n*S_{k+1}|
+                        if qsn_j-sk_j[k] < sk_j[k+1]-qsn_j or (k%2==0 and qsn_j-sk_j[k] ==sk_j[k+1]-qsn_j):
                             indices.append(k)
                         else:
                             indices.append(k+1)
@@ -317,8 +316,9 @@ def _find_weighted_index(sk,qsn,interpolation='linear'):
                             "'midpoint', or 'nearest'")
                     break
                 k = k+1
-
-    return np.asanyarray(indices).reshape((qsn.shape[0],)+dim[1:])
+    indices = np.asanyarray(indices).reshape(dim[1:]+(qsn.shape[0],))
+    indices = np.moveaxis(indices, -1, 0)
+    return indices
     
 def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_input=False,
                            interpolation='linear', keepdims=False):
@@ -367,9 +367,10 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
     # compute Sk for k = 1,...,n and q*Sn
     sk = np.asarray([k*wp[k,...]+(Nx-1)*sum(wp[:k,...],axis=0) for k in range(Nx)])
     sn = sk[-1,...]
-    qp = np.sort(np.atleast_1d(q),axis=0)
+    qp = np.atleast_1d(q)
+    sorted_index_q = qp.argsort(axis=0)
+    qp = np.take_along_axis(qp, sorted_index_q, axis=0)
     qsn = qp.reshape((-1,)+(1,)*(sn.ndim))*sn # (q,d1,d2,...,dk)
-                    
     # round fractional indices according to interpolation method
     indices = _find_weighted_index(sk,qsn,interpolation)
 
@@ -405,19 +406,19 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
             s_above = np.take_along_axis(sk,indices_above,0)
             r = _weighted_lerp(x_below, x_above, s_below,s_above,qsn, out=out)
     # if any slice contained a nan, then all results on that slice are also nan
+    inverse_index_q = sorted_index_q.argsort(axis=0)
     if np.any(n):
         if r.ndim == 0 and out is None:
             # can't write to a scalar
             r = a.dtype.type(np.nan)
         else:
             r[..., n] = a.dtype.type(np.nan)
-    if d==0:
-        return r[0]
-    else:
-        return r
+
+    r = r[inverse_index_q]
+    return r
 
 
-# In[21]:
+# In[179]:
 
 
 from  itertools import permutations
@@ -426,8 +427,8 @@ import pickle
 def add_sample(a,test_sample,out=None,overwrite_input=False,keepdims=False):
     w = np.ones_like(a)
     interpolation_list = ['lower','higher','midpoint','nearest','linear']
-    q_list = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
-    axis_list = [None]
+    q_list = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,np.random.rand(10)]
+    axis_list = [None,0,(0,1)]
     for d in permutations(tuple(range(a.ndim))):
         axis_list.append(d)
     for interpolation in interpolation_list:
@@ -471,11 +472,4 @@ if __name__=="__main__":
         test_sample = pickle.load(f)
     error_samples = []
     check_equal(test_sample,error_samples)
- 
-
-
-# In[ ]:
-
-
-
 
