@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[14]:
+# In[16]:
 
 
 array_function_dispatch = functools.partial(
@@ -367,7 +367,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
     # compute Sk for k = 1,...,n and q*Sn
     sk = np.asarray([k*wp[k,...]+(Nx-1)*sum(wp[:k,...],axis=0) for k in range(Nx)])
     sn = sk[-1,...]
-    q = np.sort(q.reshape(-1,1))
+    q = np.atleast_1d(q)
     qsn = q.reshape((-1,)+(1,)*(sn.ndim))*sn # (q,d1,d2,...,dk)
                     
     # round fractional indices according to interpolation method
@@ -417,7 +417,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
         return r
 
 
-# In[15]:
+# In[17]:
 
 
 from  itertools import permutations
