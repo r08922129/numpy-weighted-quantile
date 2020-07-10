@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[16]:
+# In[20]:
 
 
 array_function_dispatch = functools.partial(
@@ -285,13 +285,12 @@ def _find_weighted_index(sk,qsn,interpolation='linear'):
     indices = []
     
     for  j in range(_qsn.shape[1]):
-        k = -1
+        k = 0
         for i in range(_qsn.shape[0]):
             qsn_j = _qsn[i,j]
             sk_j = _sk[:,j]
             # find Sk
             while(True):
-                k = k+1
                 if qsn_j==sk_j[k]:
                     indices.append(k)
                     break
@@ -317,6 +316,7 @@ def _find_weighted_index(sk,qsn,interpolation='linear'):
                             "interpolation can only be 'linear', 'lower' 'higher', "
                             "'midpoint', or 'nearest'")
                     break
+                k = k+1
 
     return np.asanyarray(indices).reshape((qsn.shape[0],)+dim[1:])
     
@@ -367,8 +367,8 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
     # compute Sk for k = 1,...,n and q*Sn
     sk = np.asarray([k*wp[k,...]+(Nx-1)*sum(wp[:k,...],axis=0) for k in range(Nx)])
     sn = sk[-1,...]
-    q = np.atleast_1d(q)
-    qsn = q.reshape((-1,)+(1,)*(sn.ndim))*sn # (q,d1,d2,...,dk)
+    qp = np.sort(np.atleast_1d(q),axis=0)
+    qsn = qp.reshape((-1,)+(1,)*(sn.ndim))*sn # (q,d1,d2,...,dk)
                     
     # round fractional indices according to interpolation method
     indices = _find_weighted_index(sk,qsn,interpolation)
@@ -417,7 +417,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
         return r
 
 
-# In[17]:
+# In[21]:
 
 
 from  itertools import permutations
