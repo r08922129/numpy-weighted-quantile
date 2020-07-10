@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[11]:
 
 
 import collections.abc
@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[5]:
+# In[48]:
 
 
 array_function_dispatch = functools.partial(
@@ -302,7 +302,7 @@ def _find_weighted_index(sk,qsn,interpolation='linear'):
                     elif interpolation == 'nearest':
                         # np.round(0.5)==0 but np.round(1.5)==2.
                         # To get the same result with np.quantile(), test if k==0 and |q*S_n-S_k| == |q*S_n*S_{k+1}|
-                        if qsn_j-sk_j[k] < sk_j[k+1]-qsn_j or (k==0 and qsn_j-sk_j[k] ==sk_j[k+1]-qsn_j):
+                        if qsn_j-sk_j[k] < sk_j[k+1]-qsn_j or (k%2==0 and qsn_j-sk_j[k] ==sk_j[k+1]-qsn_j):
                             indices.append(k)
                         else:
                             indices.append(k+1)
@@ -364,7 +364,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
     sk = np.asarray([k*wp[k,...]+(Nx-1)*sum(wp[:k,...],axis=0) for k in range(Nx)])
     sn = sk[-1,...]
     qsn = q.reshape((-1,)+(1,)*(sn.ndim))*sn # (q,d1,d2,...,dk)
-                    
+    
     # round fractional indices according to interpolation method
     indices = _find_weighted_index(sk,qsn,interpolation)
 
@@ -412,7 +412,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
         return r
 
 
-# In[6]:
+# In[49]:
 
 
 from  itertools import permutations
@@ -421,10 +421,8 @@ import pickle
 def add_sample(a,test_sample,out=None,overwrite_input=False,keepdims=False):
     w = np.ones_like(a)
     interpolation_list = ['lower','higher','midpoint','nearest','linear']
-    q_list = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
-    axis_list = [None]
-    for d in permutations(tuple(range(a.ndim))):
-        axis_list.append(d)
+    q_list = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,np.random.rand(10)]
+    axis_list = [None,0]
     for interpolation in interpolation_list:
         for q in q_list:
             for axis in axis_list:
@@ -464,13 +462,9 @@ def check_equal(param_list,error_samples):
 if __name__=="__main__":
     with open("test_sample.pkl",'rb') as f:
         test_sample = pickle.load(f)
+    a = np.random.rand(10)
+    add_sample(a,test_sample)
     error_samples = []
     check_equal(test_sample,error_samples)
  
-
-
-# In[ ]:
-
-
-
 
