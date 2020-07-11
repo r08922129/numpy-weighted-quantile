@@ -267,7 +267,7 @@ def _weight_is_valid(w):
 
 
 def _weighted_lerp(a, b, sa,
-                   sb,qsn, out=None):
+                   sb, qsn, out=None):
     """ Linearly interpolate from a to b by a factor of sk 
     The weighted quantile formulation is [X_k + (X_{k+1}-X_k)*(q*S_n-S_k)/(S_{k+1}-S_k)]
     Parameters
@@ -379,7 +379,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
     wp = np.take_along_axis(wp, sorted_index, axis=0)
     
     # Compute Sk for k = 1,...,n
-    sk = np.asarray([k*wp[k,...] + (Nx-1)*sum(wp[:k,...], axis=0) for k in range(Nx)])
+    sk = np.asarray([k*wp[k,...] + (Nx-1) * sum(wp[:k,...], axis=0) for k in range(Nx)])
     sn = sk[-1,...]
 
     # Sort q to save time when compute indices
