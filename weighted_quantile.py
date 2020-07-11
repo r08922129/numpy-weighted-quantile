@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[22]:
 
 
 import collections.abc
@@ -40,11 +40,13 @@ import builtins
 import os
 
 
-# In[20]:
+# In[23]:
 
 
 array_function_dispatch = functools.partial(
-    overrides.array_function_dispatch, module='numpy')
+    overrides.array_function_dispatch, module='numpy'
+    )
+
 def _weighted_ureduce(a, func, w, **kwargs):
     """
     Internal Function.
@@ -83,11 +85,11 @@ def _weighted_ureduce(a, func, w, **kwargs):
         else:
             keep = set(range(nd)) - set(axis)
             nkeep = len(keep)
-            # swap axis that should not be reduced to front
+            # Swap axis that should not be reduced to front
             for i, s in enumerate(sorted(keep)):
                 a = a.swapaxes(i, s)
                 w = w.swapaxes(i, s)
-            # merge reduced axis
+            # Merge reduced axis
             a = a.reshape(a.shape[:nkeep] + (-1,))
             w = w.reshape(a.shape[:nkeep] + (-1,))
             kwargs['axis'] = -1
@@ -97,13 +99,16 @@ def _weighted_ureduce(a, func, w, **kwargs):
 
     r = func(a, w, **kwargs)
     return r, keepdim
+
+
 def _weighted_quantile_dispatcher(a, q, w, axis=None, out=None, overwrite_input=None,
-                         interpolation=None, keepdims=None):
+                                  interpolation=None, keepdims=None):
     return (a, q, out)
 
+
 @array_function_dispatch(_weighted_quantile_dispatcher)
-def weighted_quantile(a, q, w, axis=None, out=None, # new w
-             overwrite_input=False, interpolation='linear', keepdims=False):
+def weighted_quantile(a, q, w, axis=None, out=None,
+                      overwrite_input=False, interpolation='linear', keepdims=False):
     """
     Compute the q-th weighted quantile of the data along the specified axis.
     Parameters
@@ -200,16 +205,19 @@ def weighted_quantile(a, q, w, axis=None, out=None, # new w
     a = np.asanyarray(a)
     q = np.asanyarray(q)
     w = np.asanyarray(w)
-    
-    if w.shape!=a.shape:
+
+    if w.shape != a.shape:
         if w.ndim != 1:
             raise TypeError(
-                "1D weights expected when shapes of a and weights differ.")
-        if w.shape[0] != a.shape[axis]:
-            raise ValueError(
-                "Length of weights not compatible with specified axis.")
-        w = np.broadcast_to(w, (a.ndim-1)*(1,) + w.shape)
-        w = w.swapaxes(-1, axis)*np.ones(a.shape)
+                "1D weights expected when shapes of a and weights differ."
+            )
+        if axis is not None:
+            if w.shape[0] != a.shape[axis]:
+                raise ValueError(
+                    "Length of weights not compatible with specified axis."
+                )
+            w = np.broadcast_to(w, (a.ndim-1)*(1,) + w.shape)
+            w = w.swapaxes(-1, axis)*np.ones(a.shape)
 
     if not _quantile_is_valid(q):
         raise ValueError("Quantiles must be in the range [0, 1]")
@@ -220,7 +228,7 @@ def weighted_quantile(a, q, w, axis=None, out=None, # new w
 
 
 def _weighted_quantile_unchecked(a, q, w, axis=None, out=None, overwrite_input=False,
-                        interpolation='linear', keepdims=False):
+                                 interpolation='linear', keepdims=False):
     """Assumes that q is in [0, 1], and is an ndarray"""
     r, k = _weighted_ureduce(a, func=_weighted_quantile_ureduce_func,w=w, q=q, axis=axis, out=out,
                     overwrite_input=overwrite_input,
@@ -232,32 +240,34 @@ def _weighted_quantile_unchecked(a, q, w, axis=None, out=None, overwrite_input=F
 
 
 def _quantile_is_valid(q):
-    # avoid expensive reductions, relevant for arrays with < O(1000) elements
+    # Avoid expensive reductions, relevant for arrays with < O(1000) elements
     if q.ndim == 1 and q.size < 10:
         for i in range(q.size):
             if q[i] < 0.0 or q[i] > 1.0:
                 return False
     else:
-        # faster than any()
+        # Faster than any()
         if np.count_nonzero(q < 0.0) or np.count_nonzero(q > 1.0):
             return False
     return True
 
+
 def _weight_is_valid(w):
-    # avoid expensive reductions, relevant for arrays with < O(1000) elements
+    # Avoid expensive reductions, relevant for arrays with < O(1000) elements
     if w.ndim == 1 and w.size < 10:
         for i in range(w.size):
             if w[i] <= 0.0:
                 return False
     else:
-        # faster than any()
+        # Faster than any()
         if np.count_nonzero(w <= 0.0):
             return False
     
     return True
 
 
-def _weighted_lerp(a, b, sa,sb,qsn, out=None):
+def _weighted_lerp(a, b, sa,
+                   sb,qsn, out=None):
     """ Linearly interpolate from a to b by a factor of sk 
     The weighted quantile formulation is [X_k + (X_{k+1}-X_k)*(q*S_n-S_k)/(S_{k+1}-S_k)]
     Parameters
@@ -270,12 +280,13 @@ def _weighted_lerp(a, b, sa,sb,qsn, out=None):
     """
     diff_b_a = subtract(b, a)
     # asanyarray is a stop-gap until gh-13105
-    t = (qsn-sa)/(sb-sa)
+    t = (qsn - sa) / (sb - sa)
     lerp_interpolation = asanyarray(add(a, diff_b_a*t, out=out))
     subtract(b, diff_b_a * (1 - t), out=lerp_interpolation, where=t>=0.5)
     if lerp_interpolation.ndim == 0 and out is None:
         lerp_interpolation = lerp_interpolation[()]  # unpack 0d arrays
     return lerp_interpolation
+
 
 def _find_weighted_index(sk,qsn,interpolation='linear'):
     
@@ -290,9 +301,9 @@ def _find_weighted_index(sk,qsn,interpolation='linear'):
         for i in range(_qsn.shape[0]):
             qsn_j = _qsn[i,j]
             sk_j = _sk[:,j]
-            # find Sk
+            # Find Sk
             while(True):
-                if qsn_j==sk_j[k]:
+                if qsn_j == sk_j[k]:
                     indices.append(k)
                     break
                 elif sk_j[k] < qsn_j < sk_j[k+1]:
@@ -303,13 +314,15 @@ def _find_weighted_index(sk,qsn,interpolation='linear'):
                     elif interpolation == 'midpoint':
                         indices.append(0.5*(2*k+1))
                     elif interpolation == 'nearest':
-                        # To get the same result with np.quantile(), test if k%2==0 and |q*S_n-S_k| == |q*S_n*S_{k+1}|
-                        if qsn_j-sk_j[k] < sk_j[k+1]-qsn_j or (k%2==0 and qsn_j-sk_j[k] ==sk_j[k+1]-qsn_j):
+                        if qsn_j-sk_j[k] < sk_j[k+1]-qsn_j or 
+                           (k%2 == 0 and qsn_j-sk_j[k] == sk_j[k+1]-qsn_j):
+                            # To get the same result with np.quantile(),
+                            # test if k%2==0 and |q*S_n-S_k| == |q*S_n*S_{k+1}|
                             indices.append(k)
                         else:
                             indices.append(k+1)
                     elif interpolation == 'linear':
-                        # just let the indices to be float temporally
+                        # Just let the indices to be float temporally
                         indices.append(0.5*(2*k+1))
                     else:
                         raise ValueError(
@@ -321,15 +334,16 @@ def _find_weighted_index(sk,qsn,interpolation='linear'):
     indices = np.moveaxis(indices, -1, 0)
     return indices
     
+    
 def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_input=False,
-                           interpolation='linear', keepdims=False):
+                                    interpolation='linear', keepdims=False):
 
     # ufuncs cause 0d array results to decay to scalars (see gh-13105), which
     # makes them problematic for __setitem__ and attribute access. As a
     # workaround, we call this on the result of every ufunc on a possibly-0d
     # array.
     not_scalar = np.asanyarray
-    # prepare a for partitioning
+    # Prepare a for partitioning
     if overwrite_input:
         if axis is None:
             ap = a.ravel()
@@ -357,46 +371,46 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
     
     Nx = ap.shape[axis]
     
-    # reshape to (Nx, d1,d2,...,dk)
+    # Reshape to (Nx, d1,d2,...,dk)
     ap = np.moveaxis(ap, axis, 0)
     wp = np.moveaxis(wp, axis, 0)
-    # sort ap and wp to compute Sk
+    # Sort ap and wp to compute Sk
     sorted_index = ap.argsort(axis=0)
     ap = np.take_along_axis(ap, sorted_index, axis=0)
     wp = np.take_along_axis(wp, sorted_index, axis=0) # (N, group)
     
-    # compute Sk for k = 1,...,n and q*Sn
+    # Compute Sk for k = 1,...,n and q*Sn
     sk = np.asarray([k*wp[k,...]+(Nx-1)*sum(wp[:k,...],axis=0) for k in range(Nx)])
     sn = sk[-1,...]
     qp = np.atleast_1d(q)
     sorted_index_q = qp.argsort(axis=0)
     qp = np.take_along_axis(qp, sorted_index_q, axis=0)
     qsn = qp.reshape((-1,)+(1,)*(sn.ndim))*sn # (q,d1,d2,...,dk)
-    # round fractional indices according to interpolation method
+    # Round fractional indices according to interpolation method
     indices = _find_weighted_index(sk,qsn,interpolation)
 
     if np.issubdtype(indices.dtype, np.integer):
-        # take the points along axis
+        # Take the points along axis
         if np.issubdtype(a.dtype, np.inexact):
             n = np.isnan(ap[-1])
         else:
-            # cannot contain nan
+            # Cannot contain nan
             n = np.array(False, dtype=bool)          
         r = np.take_along_axis(ap,indices,0)
 
     else:
-        # weight the points above and below the indices
+        # Weight the points above and below the indices
         indices_below = not_scalar(floor(indices)).astype(intp)
         indices_above = not_scalar(indices_below + 1)
         indices_above[indices_above > Nx - 1] = Nx - 1
         if np.issubdtype(a.dtype, np.inexact):
-            # may contain nan, which would sort to the end
+            # May contain nan, which would sort to the end
             n = np.isnan(ap[-1])
         else:
-            # cannot contain nan
+            # Cannot contain nan
             n = np.array(False, dtype=bool)
 
-        # get Xk, Xk+1, Sk, Sk+1 to do interpolation
+        # Get Xk, Xk+1, Sk, Sk+1 to do interpolation
         x_below = np.take_along_axis(ap,indices_below,0)
         x_above = np.take_along_axis(ap,indices_above,0)
 
@@ -406,8 +420,9 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
             s_below = np.take_along_axis(sk,indices_below,0)
             s_above = np.take_along_axis(sk,indices_above,0)
             r = _weighted_lerp(x_below, x_above, s_below,s_above,qsn, out=out)
-    # if any slice contained a nan, then all results on that slice are also nan
+    # 
     inverse_index_q = sorted_index_q.argsort(axis=0)
+    # If any slice contained a nan, then all results on that slice are also nan
     if np.any(n):
         if r.ndim == 0 and out is None:
             # can't write to a scalar
@@ -416,10 +431,13 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
             r[..., n] = a.dtype.type(np.nan)
 
     r = r[inverse_index_q]
-    return r
+    if d==0:
+        return r[0]
+    else:
+        return r
 
 
-# In[21]:
+# In[24]:
 
 
 from  itertools import permutations
@@ -473,6 +491,21 @@ if __name__=="__main__":
         test_sample = pickle.load(f)
     error_samples = []
     check_equal(test_sample,error_samples)
+
+
+# In[25]:
+
+
+a = np.random.rand(5,4,3)
+q = 0.5
+w = np.ones(60)
+weighted_quantile(a,q,w)
+
+
+# In[26]:
+
+
+np.quantile(a,q)
 
 
 # In[ ]:
