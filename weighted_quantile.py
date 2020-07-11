@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[52]:
+# In[1]:
 
 
 import collections.abc
@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[165]:
+# In[20]:
 
 
 array_function_dispatch = functools.partial(
@@ -200,6 +200,7 @@ def weighted_quantile(a, q, w, axis=None, out=None, # new w
     a = np.asanyarray(a)
     q = np.asanyarray(q)
     w = np.asanyarray(w)
+    
     if w.shape!=a.shape:
         if w.ndim != 1:
             raise TypeError(
@@ -208,7 +209,7 @@ def weighted_quantile(a, q, w, axis=None, out=None, # new w
             raise ValueError(
                 "Length of weights not compatible with specified axis.")
         w = np.broadcast_to(w, (a.ndim-1)*(1,) + w.shape)
-        w = w.swapaxes(-1, axis)
+        w = w.swapaxes(-1, axis)*np.ones(a.shape)
 
     if not _quantile_is_valid(q):
         raise ValueError("Quantiles must be in the range [0, 1]")
@@ -418,7 +419,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
     return r
 
 
-# In[179]:
+# In[21]:
 
 
 from  itertools import permutations
@@ -472,4 +473,10 @@ if __name__=="__main__":
         test_sample = pickle.load(f)
     error_samples = []
     check_equal(test_sample,error_samples)
+
+
+# In[ ]:
+
+
+
 
