@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[21]:
+# In[59]:
 
 
 array_function_dispatch = functools.partial(
@@ -491,10 +491,6 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None,
         r = np.take_along_axis(ap, indices, 0)
 
     else:
-        # Weight the points above and below the indices
-        indices_below = not_scalar(floor(indices)).astype(intp)
-        indices_above = not_scalar(indices_below + 1)
-        indices_above[indices_above > Nx - 1] = Nx - 1
         if np.issubdtype(a.dtype, np.inexact):
             # May contain nan, which would sort to the end
             n = np.isnan(ap[-1])
@@ -502,13 +498,19 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None,
             # Cannot contain nan
             n = np.array(False, dtype=bool)
 
-        # Get Xk, Xk+1, Sk, Sk+1 to do interpolation
+        # Weight the points above and below the indices
+        indices_below = not_scalar(floor(indices)).astype(intp)
         x_below = np.take_along_axis(ap, indices_below, 0)
-        x_above = np.take_along_axis(ap, indices_above, 0)
-
+        
         if interpolation == 'midpoint':
+            indices_above = not_scalar(ceil(indices)).astype(intp)
+            x_above = np.take_along_axis(ap, indices_above, 0)
             r = 0.5 * (x_below+x_above)
         else:
+            # compute indices_above seperately to avoid division by zero problem 
+            indices_above = not_scalar(indices_below + 1).astype(intp)
+            x_above = np.take_along_axis(ap, indices_above, 0)
+            # Get Xk, Xk+1, Sk, Sk+1 to do interpolation
             s_below = np.take_along_axis(sk, indices_below, 0)
             s_above = np.take_along_axis(sk, indices_above, 0)
             r = _weighted_lerp(x_below, x_above, s_below, s_above,qsn, out=out)
@@ -599,7 +601,6 @@ def _quantile_ureduce_func(a, q, axis=None, out=None, overwrite_input=False,
 
     else:
         # weight the points above and below the indices
-
         indices_below = not_scalar(floor(indices)).astype(intp)
         indices_above = not_scalar(indices_below + 1)
         indices_above[indices_above > Nx - 1] = Nx - 1
@@ -636,7 +637,7 @@ def _quantile_ureduce_func(a, q, axis=None, out=None, overwrite_input=False,
     return r
 
 
-# In[22]:
+# In[60]:
 
 
 from  itertools import permutations
@@ -692,7 +693,7 @@ if __name__=="__main__":
     check_equal(test_sample,error_samples)
 
 
-# In[23]:
+# In[39]:
 
 
 a = np.random.rand(5,4,3)
@@ -701,18 +702,25 @@ w = np.ones(60)
 quantile(a,q,w,interpolation='linear')
 
 
-# In[24]:
+# In[40]:
 
 
 np.quantile(a,q)
 
 
-# In[28]:
+# In[61]:
 
 
 a = np.array([[10, 7, 4], [3, 2, 1]])
 w = np.ones(2)
 quantile(a, 0.5, w, axis=0)
+
+
+# In[62]:
+
+
+x = np.array([1,2,3])
+quantile(x,[0.1,0.5],np.ones(3))
 
 
 # In[ ]:
