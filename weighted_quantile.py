@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[22]:
+# In[3]:
 
 
 import collections.abc
@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[39]:
+# In[4]:
 
 
 array_function_dispatch = functools.partial(
@@ -101,14 +101,14 @@ def _weighted_ureduce(a, func, w, **kwargs):
     return r, keepdim
 
 
-def _weighted_quantile_dispatcher(a, q, w, axis=None, out=None,
+def quantile_dispatcher(a, q, w=None, axis=None, out=None,
                                   overwrite_input=None, interpolation=None,
                                   keepdims=None):
-    return (a, q, out)
+    return (a, q, w, out)
 
 
-@array_function_dispatch(_weighted_quantile_dispatcher)
-def weighted_quantile(a, q, w, axis=None, out=None,
+@array_function_dispatch(quantile_dispatcher)
+def quantile(a, q, w=None, axis=None, out=None,
                       overwrite_input=False, interpolation='linear',
                       keepdims=False):
     """
@@ -123,8 +123,8 @@ def weighted_quantile(a, q, w, axis=None, out=None,
     w : array_like
         The weights of sample. It must have the same shape with a or
         be a 1d array for broadcast.
-        When it's a 1d array, axis should be an integer and
-        w.size == a.shape[axis].
+        When it's a 1d array, axis should be an integer or None and
+        w.size == a.shape[axis] or w.size == a.size.
         If all elements in w are the same, this function works like np.quantile.
     axis : {int, tuple of int, None}, optional
         Axis or axes along which the quantiles are computed. The
@@ -206,39 +206,47 @@ def weighted_quantile(a, q, w, axis=None, out=None,
     array([7.,  2.])
     >>> assert not np.all(a == b)
     """
-    a = np.asanyarray(a)
     q = np.asanyarray(q)
-    w = np.asanyarray(w)
-
-    if w.shape != a.shape:
-        if w.ndim != 1:
-            raise TypeError(
-                "1D weights expected when shapes of a and weights differ."
-            )
-        if axis is not None:
-            if w.shape[0] != a.shape[axis]:
-                raise ValueError(
-                    "Length of weights not compatible with specified axis."
-                )
-            w = np.broadcast_to(w, (a.ndim-1)*(1,) + w.shape)
-            w = w.swapaxes(-1, axis) * np.ones(a.shape)
-
+    
     if not _quantile_is_valid(q):
         raise ValueError("Quantiles must be in the range [0, 1]")
-    if not _weight_is_valid(w):
-        raise ValueError("All the weights must be > 0")
-    return _weighted_quantile_unchecked(
+        
+    if w is not None:
+        a = np.asanyarray(a)
+        w = np.asanyarray(w)
+
+        if w.shape != a.shape:
+            if w.ndim != 1:
+                raise TypeError(
+                    "1D weights expected when shapes of a and weights differ."
+                )
+            if axis is not None:
+                if w.shape[0] != a.shape[axis]:
+                    raise ValueError(
+                        "Length of weights not compatible with specified axis."
+                    )
+                w = np.broadcast_to(w, (a.ndim-1) * (1,) + w.shape)
+                w = w.swapaxes(-1, axis) * np.ones(a.shape)
+        if not _weight_is_valid(w):
+            raise ValueError("All the weights must be > 0")
+
+    return _quantile_unchecked(
         a, q, w, axis, out, overwrite_input, interpolation, keepdims)
 
 
-def _weighted_quantile_unchecked(a, q, w, axis=None, out=None,
+def _quantile_unchecked(a, q, w, axis=None, out=None,
                                  overwrite_input=False, interpolation='linear',
                                  keepdims=False):
     """Assumes that q is in [0, 1], and is an ndarray"""
-    r, k = _weighted_ureduce(a, func=_weighted_quantile_ureduce_func, w=w,
-                             q=q, axis=axis, out=out,
-                             overwrite_input=overwrite_input,
-                             interpolation=interpolation)
+    if w is None:
+        r, k = _ureduce(a, func=_quantile_ureduce_func, q=q, axis=axis, out=out,
+                        overwrite_input=overwrite_input,
+                        interpolation=interpolation)
+    else:
+        r, k = _weighted_ureduce(a, func=_weighted_quantile_ureduce_func, w=w,
+                                 q=q, axis=axis, out=out,
+                                 overwrite_input=overwrite_input,
+                                 interpolation=interpolation)
     if keepdims:
         return r.reshape(q.shape + k)
     else:
@@ -388,7 +396,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None,
     
     # Compute Sk for k = 1,...,n
     sk = np.asarray(
-        [k*wp[k,...] + (Nx-1)*sum(wp[:k,...], axis=0) for k in range(Nx)]
+        [k*wp[k,...] + (Nx-1) * sum(wp[:k,...], axis=0) for k in range(Nx)]
         )
     sn = sk[-1,...]
 
@@ -449,7 +457,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None,
         return r
 
 
-# In[40]:
+# In[6]:
 
 
 from  itertools import permutations
@@ -486,7 +494,7 @@ def check_equal(param_list,error_samples):
         interpolation = param_dict['interpolation']
         keepdims = param_dict['keepdims']
         
-        result_a = weighted_quantile(a, q, w, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
+        result_a = quantile(a, q, w, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
         result_b = np.quantile(a, q, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
         if not np.allclose(result_a,result_b,equal_nan=True):
             error_samples.append(param_dict)
@@ -505,16 +513,16 @@ if __name__=="__main__":
     check_equal(test_sample,error_samples)
 
 
-# In[41]:
+# In[9]:
 
 
 a = np.random.rand(5,4,3)
 q = 0.5
 w = np.ones(60)
-weighted_quantile(a,q,w)
+quantile(a,q,w,interpolation='linear')
 
 
-# In[42]:
+# In[10]:
 
 
 np.quantile(a,q)
