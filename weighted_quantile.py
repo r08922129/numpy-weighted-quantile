@@ -188,6 +188,9 @@ def quantile(a, q, w=None, axis=None, out=None,
            [ 3,  2,  1]])
     >>> np.quantile(a, 0.5)
     3.5
+    >>> w = np.ones((2,3))
+    >>> quantile(a, 0.5, w)
+    3.5
     >>> np.quantile(a, 0.5, axis=0)
     array([6.5, 4.5, 2.5])
     >>> np.quantile(a, 0.5, axis=1)
@@ -526,6 +529,14 @@ quantile(a,q,w,interpolation='linear')
 
 
 np.quantile(a,q)
+
+
+# In[12]:
+
+
+a = np.array([[10, 7, 4], [3, 2, 1]])
+w = np.ones((2,3))
+quantile(a, 0.5, w)
 
 
 # In[ ]:
