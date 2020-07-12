@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[59]:
+# In[80]:
 
 
 array_function_dispatch = functools.partial(
@@ -518,11 +518,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None,
     inverse_index_q = sorted_index_q.argsort(axis=0)
     # If any slice contained a nan, then all results on that slice are also nan
     if np.any(n):
-        if r.ndim == 0 and out is None:
-            # can't write to a scalar
-            r = a.dtype.type(np.nan)
-        else:
-            r[..., n] = a.dtype.type(np.nan)
+        r[..., n] = a.dtype.type(np.nan)
 
     r = r[inverse_index_q]
     if d == 0:
@@ -625,7 +621,7 @@ def _quantile_ureduce_func(a, q, axis=None, out=None, overwrite_input=False,
         x_above = take(ap, indices_above, axis=0)
 
         r = _lerp(x_below, x_above, weights_above, out=out)
-
+    print(r)
     # if any slice contained a nan, then all results on that slice are also nan
     if np.any(n):
         if r.ndim == 0 and out is None:
@@ -637,7 +633,7 @@ def _quantile_ureduce_func(a, q, axis=None, out=None, overwrite_input=False,
     return r
 
 
-# In[60]:
+# In[74]:
 
 
 from  itertools import permutations
@@ -716,11 +712,23 @@ w = np.ones(2)
 quantile(a, 0.5, w, axis=0)
 
 
-# In[62]:
+# In[85]:
 
 
-x = np.array([1,2,3])
-quantile(x,[0.1,0.5],np.ones(3))
+x = np.array([1,5])
+quantile(x,0.1,interpolation='midpoint')
+
+
+# In[68]:
+
+
+np.any(np.array([0,0,0]))
+
+
+# In[92]:
+
+
+
 
 
 # In[ ]:
