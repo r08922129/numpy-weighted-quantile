@@ -332,8 +332,8 @@ def _find_weighted_index(sk, qsn, interpolation='linear'):
                         indices.append(0.5 * (2*k + 1))
                     else:
                         raise ValueError(
-                            "interpolation can only be 'linear',\
-                            'lower' 'higher', 'midpoint', or 'nearest'"
+                            "interpolation can only be 'linear',"
+                            "'lower' 'higher', 'midpoint', or 'nearest'"
                         )
                     break
                 k = k + 1
