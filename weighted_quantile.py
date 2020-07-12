@@ -101,14 +101,16 @@ def _weighted_ureduce(a, func, w, **kwargs):
     return r, keepdim
 
 
-def _weighted_quantile_dispatcher(a, q, w, axis=None, out=None, overwrite_input=None,
-                                  interpolation=None, keepdims=None):
+def _weighted_quantile_dispatcher(a, q, w, axis=None, out=None,
+                                  overwrite_input=None, interpolation=None,
+                                  keepdims=None):
     return (a, q, out)
 
 
 @array_function_dispatch(_weighted_quantile_dispatcher)
 def weighted_quantile(a, q, w, axis=None, out=None,
-                      overwrite_input=False, interpolation='linear', keepdims=False):
+                      overwrite_input=False, interpolation='linear',
+                      keepdims=False):
     """
     Compute the q-th weighted quantile of the data along the specified axis.
     Parameters
@@ -119,8 +121,10 @@ def weighted_quantile(a, q, w, axis=None, out=None,
         Quantile or sequence of quantiles to compute, which must be between
         0 and 1 inclusive.
     w : array_like
-        The weights of sample. It must have the same shape with a or be a 1d array for broadcast.
-        When it's a 1d array, axis should be an integer and w.size == a.shape[axis].
+        The weights of sample. It must have the same shape with a or
+        be a 1d array for broadcast.
+        When it's a 1d array, axis should be an integer and
+        w.size == a.shape[axis].
         If all elements in w are the same, this function works like np.quantile.
     axis : {int, tuple of int, None}, optional
         Axis or axes along which the quantiles are computed. The
@@ -216,7 +220,7 @@ def weighted_quantile(a, q, w, axis=None, out=None,
                 raise ValueError(
                     "Length of weights not compatible with specified axis."
                 )
-            w = np.broadcast_to(w, (a.ndim-1) * (1,) + w.shape)
+            w = np.broadcast_to(w, (a.ndim-1)*(1,) + w.shape)
             w = w.swapaxes(-1, axis) * np.ones(a.shape)
 
     if not _quantile_is_valid(q):
@@ -227,10 +231,12 @@ def weighted_quantile(a, q, w, axis=None, out=None,
         a, q, w, axis, out, overwrite_input, interpolation, keepdims)
 
 
-def _weighted_quantile_unchecked(a, q, w, axis=None, out=None, overwrite_input=False,
-                                 interpolation='linear', keepdims=False):
+def _weighted_quantile_unchecked(a, q, w, axis=None, out=None,
+                                 overwrite_input=False, interpolation='linear',
+                                 keepdims=False):
     """Assumes that q is in [0, 1], and is an ndarray"""
-    r, k = _weighted_ureduce(a, func=_weighted_quantile_ureduce_func, w=w, q=q, axis=axis, out=out,
+    r, k = _weighted_ureduce(a, func=_weighted_quantile_ureduce_func, w=w,
+                             q=q, axis=axis, out=out,
                              overwrite_input=overwrite_input,
                              interpolation=interpolation)
     if keepdims:
@@ -269,7 +275,8 @@ def _weight_is_valid(w):
 def _weighted_lerp(a, b, sa,
                    sb, qsn, out=None):
     """ Linearly interpolate from a to b by a factor of sk 
-    The weighted quantile formulation is [X_k + (X_{k+1}-X_k)*(q*S_n-S_k)/(S_{k+1}-S_k)]
+    The weighted quantile formulation is
+        [X_k + (X_{k+1}-X_k)*(q*S_n-S_k)/(S_{k+1}-S_k)]
     Parameters
     ----------
     a : X_k
@@ -281,7 +288,7 @@ def _weighted_lerp(a, b, sa,
     diff_b_a = subtract(b, a)
     # asanyarray is a stop-gap until gh-13105
     t = (qsn-sa) / (sb-sa)
-    lerp_interpolation = asanyarray(add(a, diff_b_a*t, out=out))
+    lerp_interpolation = asanyarray(add(a, diff_b_a * t, out=out))
     subtract(b, diff_b_a * (1-t), out=lerp_interpolation, where=(t >= 0.5))
     if lerp_interpolation.ndim == 0 and out is None:
         lerp_interpolation = lerp_interpolation[()]  # unpack 0d arrays
@@ -316,7 +323,7 @@ def _find_weighted_index(sk, qsn, interpolation='linear'):
                         if (qsn_j-sk_j[k] < sk_j[k+1]-qsn_j or
                             (k%2 == 0 and qsn_j-sk_j[k] == sk_j[k+1]-qsn_j)):
                             # To get the same result with np.quantile(),
-                            # test if k%2==0 and |q*S_n-S_k| == |q*S_n*S_{k+1}|
+                            # test if k%2==0 and |q*S_n-S_k| == |q*S_n*S_{k+1}|.
                             indices.append(k)
                         else:
                             indices.append(k+1)
@@ -325,8 +332,8 @@ def _find_weighted_index(sk, qsn, interpolation='linear'):
                         indices.append(0.5 * (2*k + 1))
                     else:
                         raise ValueError(
-                            "interpolation can only be 'linear', 'lower' 'higher', "
-                            "'midpoint', or 'nearest'"
+                            "interpolation can only be 'linear',\
+                            'lower' 'higher', 'midpoint', or 'nearest'"
                         )
                     break
                 k = k + 1
@@ -335,7 +342,8 @@ def _find_weighted_index(sk, qsn, interpolation='linear'):
     return indices
     
     
-def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_input=False,
+def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None,
+                                    overwrite_input=False,
                                     interpolation='linear', keepdims=False):
     # ufuncs cause 0d array results to decay to scalars (see gh-13105), which
     # makes them problematic for __setitem__ and attribute access. As a
@@ -379,10 +387,12 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
     wp = np.take_along_axis(wp, sorted_index, axis=0)
     
     # Compute Sk for k = 1,...,n
-    sk = np.asarray([k*wp[k,...] + (Nx-1) * sum(wp[:k,...], axis=0) for k in range(Nx)])
+    sk = np.asarray(
+        [k*wp[k,...] + (Nx-1)*sum(wp[:k,...], axis=0) for k in range(Nx)]
+        )
     sn = sk[-1,...]
 
-    # Sort q to save time when compute indices
+    # Sort q to save time when compute indices.
     qp = np.atleast_1d(q)
     sorted_index_q = qp.argsort(axis=0)
     qp = np.take_along_axis(qp, sorted_index_q, axis=0)
@@ -417,7 +427,7 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None, overwrite_inpu
         x_above = np.take_along_axis(ap, indices_above, 0)
 
         if interpolation == 'midpoint':
-            r = 0.5 * (x_below + x_above)
+            r = 0.5 * (x_below+x_above)
         else:
             s_below = np.take_along_axis(sk, indices_below, 0)
             s_above = np.take_along_axis(sk, indices_above, 0)
