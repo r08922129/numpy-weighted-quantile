@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
+# In[13]:
 
 
 import collections.abc
@@ -40,12 +40,67 @@ import builtins
 import os
 
 
-# In[4]:
+# In[16]:
 
 
 array_function_dispatch = functools.partial(
     overrides.array_function_dispatch, module='numpy'
     )
+
+def _ureduce(a, func, **kwargs):
+    """
+    Internal Function.
+    Call `func` with `a` as first argument swapping the axes to use extended
+    axis on functions that don't support it natively.
+
+    Returns result and a.shape with axis dims set to 1.
+
+    Parameters
+    ----------
+    a : array_like
+        Input array or object that can be converted to an array.
+    func : callable
+        Reduction function capable of receiving a single axis argument.
+        It is called with `a` as first argument followed by `kwargs`.
+    kwargs : keyword arguments
+        additional keyword arguments to pass to `func`.
+
+    Returns
+    -------
+    result : tuple
+        Result of func(a, **kwargs) and a.shape with axis dims set to 1
+        which can be used to reshape the result to the same shape a ufunc with
+        keepdims=True would produce.
+
+    """
+    a = np.asanyarray(a)
+    axis = kwargs.get('axis', None)
+    if axis is not None:
+        keepdim = list(a.shape)
+        nd = a.ndim
+        axis = _nx.normalize_axis_tuple(axis, nd)
+
+        for ax in axis:
+            keepdim[ax] = 1
+
+        if len(axis) == 1:
+            kwargs['axis'] = axis[0]
+        else:
+            keep = set(range(nd)) - set(axis)
+            nkeep = len(keep)
+            # swap axis that should not be reduced to front
+            for i, s in enumerate(sorted(keep)):
+                a = a.swapaxes(i, s)
+            # merge reduced axis
+            a = a.reshape(a.shape[:nkeep] + (-1,))
+            kwargs['axis'] = -1
+        keepdim = tuple(keepdim)
+    else:
+        keepdim = (1,) * a.ndim
+
+    r = func(a, **kwargs)
+    return r, keepdim
+
 
 def _weighted_ureduce(a, func, w, **kwargs):
     """
@@ -283,6 +338,17 @@ def _weight_is_valid(w):
     return True
 
 
+def _lerp(a, b, t, out=None):
+    """ Linearly interpolate from a to b by a factor of t """
+    diff_b_a = subtract(b, a)
+    # asanyarray is a stop-gap until gh-13105
+    lerp_interpolation = asanyarray(add(a, diff_b_a*t, out=out))
+    subtract(b, diff_b_a * (1 - t), out=lerp_interpolation, where=t>=0.5)
+    if lerp_interpolation.ndim == 0 and out is None:
+        lerp_interpolation = lerp_interpolation[()]  # unpack 0d arrays
+    return lerp_interpolation
+
+
 def _weighted_lerp(a, b, sa,
                    sb, qsn, out=None):
     """ Linearly interpolate from a to b by a factor of sk 
@@ -460,7 +526,114 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None,
         return r
 
 
-# In[6]:
+def _quantile_ureduce_func(a, q, axis=None, out=None, overwrite_input=False,
+                           interpolation='linear', keepdims=False):
+    a = asarray(a)
+
+    # ufuncs cause 0d array results to decay to scalars (see gh-13105), which
+    # makes them problematic for __setitem__ and attribute access. As a
+    # workaround, we call this on the result of every ufunc on a possibly-0d
+    # array.
+    not_scalar = np.asanyarray
+
+    # prepare a for partitioning
+    if overwrite_input:
+        if axis is None:
+            ap = a.ravel()
+        else:
+            ap = a
+    else:
+        if axis is None:
+            ap = a.flatten()
+        else:
+            ap = a.copy()
+
+    if axis is None:
+        axis = 0
+
+    if q.ndim > 2:
+        # The code below works fine for nd, but it might not have useful
+        # semantics. For now, keep the supported dimensions the same as it was
+        # before.
+        raise ValueError("q must be a scalar or 1d")
+
+    Nx = ap.shape[axis]
+    indices = not_scalar(q * (Nx - 1))
+    # round fractional indices according to interpolation method
+    if interpolation == 'lower':
+        indices = floor(indices).astype(intp)
+    elif interpolation == 'higher':
+        indices = ceil(indices).astype(intp)
+    elif interpolation == 'midpoint':
+        indices = 0.5 * (floor(indices) + ceil(indices))
+    elif interpolation == 'nearest':
+        indices = around(indices).astype(intp)
+    elif interpolation == 'linear':
+        pass  # keep index as fraction and interpolate
+    else:
+        raise ValueError(
+            "interpolation can only be 'linear', 'lower' 'higher', "
+            "'midpoint', or 'nearest'")
+
+    # The dimensions of `q` are prepended to the output shape, so we need the
+    # axis being sampled from `ap` to be first.
+    ap = np.moveaxis(ap, axis, 0)
+    del axis
+
+    if np.issubdtype(indices.dtype, np.integer):
+        # take the points along axis
+
+        if np.issubdtype(a.dtype, np.inexact):
+            # may contain nan, which would sort to the end
+            ap.partition(concatenate((indices.ravel(), [-1])), axis=0)
+            n = np.isnan(ap[-1])
+        else:
+            # cannot contain nan
+            ap.partition(indices.ravel(), axis=0)
+            n = np.array(False, dtype=bool)
+
+        r = take(ap, indices, axis=0, out=out)
+
+    else:
+        # weight the points above and below the indices
+
+        indices_below = not_scalar(floor(indices)).astype(intp)
+        indices_above = not_scalar(indices_below + 1)
+        indices_above[indices_above > Nx - 1] = Nx - 1
+
+        if np.issubdtype(a.dtype, np.inexact):
+            # may contain nan, which would sort to the end
+            ap.partition(concatenate((
+                indices_below.ravel(), indices_above.ravel(), [-1]
+            )), axis=0)
+            n = np.isnan(ap[-1])
+        else:
+            # cannot contain nan
+            ap.partition(concatenate((
+                indices_below.ravel(), indices_above.ravel()
+            )), axis=0)
+            n = np.array(False, dtype=bool)
+
+        weights_shape = indices.shape + (1,) * (ap.ndim - 1)
+        weights_above = not_scalar(indices - indices_below).reshape(weights_shape)
+
+        x_below = take(ap, indices_below, axis=0)
+        x_above = take(ap, indices_above, axis=0)
+
+        r = _lerp(x_below, x_above, weights_above, out=out)
+
+    # if any slice contained a nan, then all results on that slice are also nan
+    if np.any(n):
+        if r.ndim == 0 and out is None:
+            # can't write to a scalar
+            r = a.dtype.type(np.nan)
+        else:
+            r[..., n] = a.dtype.type(np.nan)
+
+    return r
+
+
+# In[17]:
 
 
 from  itertools import permutations
@@ -498,7 +671,7 @@ def check_equal(param_list,error_samples):
         keepdims = param_dict['keepdims']
         
         result_a = quantile(a, q, w, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
-        result_b = np.quantile(a, q, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
+        result_b = quantile(a, q, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
         if not np.allclose(result_a,result_b,equal_nan=True):
             error_samples.append(param_dict)
             print("Error occurs!")
@@ -516,7 +689,7 @@ if __name__=="__main__":
     check_equal(test_sample,error_samples)
 
 
-# In[9]:
+# In[18]:
 
 
 a = np.random.rand(5,4,3)
@@ -525,18 +698,10 @@ w = np.ones(60)
 quantile(a,q,w,interpolation='linear')
 
 
-# In[10]:
+# In[19]:
 
 
 np.quantile(a,q)
-
-
-# In[12]:
-
-
-a = np.array([[10, 7, 4], [3, 2, 1]])
-w = np.ones((2,3))
-quantile(a, 0.5, w)
 
 
 # In[ ]:
