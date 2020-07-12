@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[13]:
+# In[20]:
 
 
 import collections.abc
@@ -40,7 +40,7 @@ import builtins
 import os
 
 
-# In[16]:
+# In[21]:
 
 
 array_function_dispatch = functools.partial(
@@ -247,6 +247,9 @@ def quantile(a, q, w=None, axis=None, out=None,
     >>> quantile(a, 0.5, w)
     3.5
     >>> np.quantile(a, 0.5, axis=0)
+    array([6.5, 4.5, 2.5])
+    >>> w = np.ones(2)
+    >>> np.quantile(a, 0.5, w, axis=0)
     array([6.5, 4.5, 2.5])
     >>> np.quantile(a, 0.5, axis=1)
     array([7.,  2.])
@@ -633,7 +636,7 @@ def _quantile_ureduce_func(a, q, axis=None, out=None, overwrite_input=False,
     return r
 
 
-# In[17]:
+# In[22]:
 
 
 from  itertools import permutations
@@ -689,7 +692,7 @@ if __name__=="__main__":
     check_equal(test_sample,error_samples)
 
 
-# In[18]:
+# In[23]:
 
 
 a = np.random.rand(5,4,3)
@@ -698,10 +701,18 @@ w = np.ones(60)
 quantile(a,q,w,interpolation='linear')
 
 
-# In[19]:
+# In[24]:
 
 
 np.quantile(a,q)
+
+
+# In[28]:
+
+
+a = np.array([[10, 7, 4], [3, 2, 1]])
+w = np.ones(2)
+quantile(a, 0.5, w, axis=0)
 
 
 # In[ ]:
