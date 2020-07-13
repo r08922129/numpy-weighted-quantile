@@ -3655,29 +3655,6 @@ def _lerp(a, b, t, out=None):
     return lerp_interpolation
 
 
-def _weighted_lerp(a, b, sa,
-                   sb, qsn, out=None):
-    """ Linearly interpolate from a to b by a factor of sk 
-    The weighted quantile formulation is
-        [X_k + (X_{k+1}-X_k)*(q*S_n-S_k)/(S_{k+1}-S_k)]
-    Parameters
-    ----------
-    a : X_k
-    b : X_{k+1}
-    sa : S_k
-    sb : S_b
-    qsn : q*Sn
-    """
-    diff_b_a = subtract(b, a)
-    # asanyarray is a stop-gap until gh-13105
-    t = (qsn-sa) / (sb-sa)
-    lerp_interpolation = asanyarray(add(a, diff_b_a * t, out=out))
-    subtract(b, diff_b_a * (1-t), out=lerp_interpolation, where=(t >= 0.5))
-    if lerp_interpolation.ndim == 0 and out is None:
-        lerp_interpolation = lerp_interpolation[()]  # unpack 0d arrays
-    return lerp_interpolation
-
-
 def _find_weighted_index(sk, qsn, interpolation='linear'):
     dim = sk.shape # (N, d1, d2,..., dk)
     Nx = dim[0]
@@ -3803,20 +3780,21 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None,
 
         # Weight the points above and below the indices
         indices_below = not_scalar(floor(indices)).astype(intp)
+        indices_above = not_scalar(ceil(indices)).astype(intp)
         x_below = np.take_along_axis(ap, indices_below, 0)
+        x_above = np.take_along_axis(ap, indices_above, 0)
         
         if interpolation == 'midpoint':
-            indices_above = not_scalar(ceil(indices)).astype(intp)
-            x_above = np.take_along_axis(ap, indices_above, 0)
             r = 0.5 * (x_below+x_above)
         else:
-            # compute indices_above seperately to avoid division by zero problem 
-            indices_above = not_scalar(indices_below + 1).astype(intp)
-            x_above = np.take_along_axis(ap, indices_above, 0)
+            unequal_indices = indices_below != indices_above
             # Get Xk, Xk+1, Sk, Sk+1 to do interpolation
             s_below = np.take_along_axis(sk, indices_below, 0)
             s_above = np.take_along_axis(sk, indices_above, 0)
-            r = _weighted_lerp(x_below, x_above, s_below, s_above,qsn, out=out)
+            # To avoid division by zero problem 
+            t = np.divide((qsn - s_below), (s_above - s_below), where = unequal_indices)
+            t[~unequal_indices] = 0
+            r = _lerp(x_below, x_above, t, out=out)
 
     inverse_index_q = sorted_index_q.argsort(axis=0)
     # If any slice contained a nan, then all results on that slice are also nan
