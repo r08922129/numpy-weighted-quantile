@@ -3858,15 +3858,15 @@ def _weighted_ureduce(a, func, w, **kwargs):
 
 
 def quantile_dispatcher(a, q, w=None, axis=None, out=None,
-                                  overwrite_input=None, interpolation=None,
-                                  keepdims=None):
+                        overwrite_input=None, interpolation=None,
+                        keepdims=None):
     return (a, q, w, out)
 
 
 @array_function_dispatch(quantile_dispatcher)
 def quantile(a, q, w=None, axis=None, out=None,
-                      overwrite_input=False, interpolation='linear',
-                      keepdims=False):
+             overwrite_input=False, interpolation='linear',
+             keepdims=False):
     """
     Compute the q-th weighted quantile of the data along the specified axis.
     Parameters
@@ -3997,8 +3997,8 @@ def quantile(a, q, w=None, axis=None, out=None,
 
 
 def _quantile_unchecked(a, q, w, axis=None, out=None,
-                                 overwrite_input=False, interpolation='linear',
-                                 keepdims=False):
+                        overwrite_input=False, interpolation='linear',
+                        keepdims=False):
     """Assumes that q is in [0, 1], and is an ndarray"""
     if w is None:
         r, k = _ureduce(a, func=_quantile_ureduce_func, q=q, axis=axis, out=out,
