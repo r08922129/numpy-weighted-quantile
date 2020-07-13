@@ -3,25 +3,21 @@ from weighted_quantile import weighted_quantile
 import pickle
 import numpy as np
 
-def add_sample(a,test_sample,out=None,overwrite_input=False,keepdims=False):
-    w = np.ones_like(a)
+from  itertools import permutations
+import pickle
+
+def add_sample(a, q, w, axis, test_sample,out=None,overwrite_input=False,keepdims=False):
     interpolation_list = ['lower','higher','midpoint','nearest','linear']
-    q_list = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
-    axis_list = [None]
-    for d in permutations(tuple(range(a.ndim))):
-        axis_list.append(d)
     for interpolation in interpolation_list:
-        for q in q_list:
-            for axis in axis_list:
-                d ={'a':a,
-                    'q':q,
-                    'w':w,
-                    'axis':axis,
-                    'out':out,
-                    'overwrite_input':overwrite_input,
-                    'interpolation':interpolation,
-                    'keepdims':keepdims}
-                test_sample.append(d)
+        d ={'a':a,
+            'q':q,
+            'w':w,
+            'axis':axis,
+            'out':out,
+            'overwrite_input':overwrite_input,
+            'interpolation':interpolation,
+            'keepdims':keepdims}
+        test_sample.append(d)
 def check_equal(param_list,error_samples):
     f = True
     for param_dict in param_list:
@@ -34,8 +30,8 @@ def check_equal(param_list,error_samples):
         interpolation = param_dict['interpolation']
         keepdims = param_dict['keepdims']
         
-        result_a = weighted_quantile(a, q, w, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
-        result_b = np.quantile(a, q, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
+        result_a = quantile(a, q, w, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
+        result_b = quantile(a, q, axis=axis, out=out, overwrite_input=overwrite_input, interpolation=interpolation, keepdims=keepdims)
         if not np.allclose(result_a,result_b,equal_nan=True):
             error_samples.append(param_dict)
             print("Error occurs!")

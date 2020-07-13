@@ -3577,7 +3577,12 @@ def quantile(a, q, w=None, axis=None, out=None,
                 raise TypeError(
                     "1D weights expected when shapes of a and weights differ."
                 )
-            if axis is not None:
+            if axis is None:
+                if w.size != a.size:
+                    raise TypeError(
+                        "Length of weights not compatible with a's size"
+                    )
+            else:
                 if w.shape[0] != a.shape[axis]:
                     raise ValueError(
                         "Length of weights not compatible with specified axis."
