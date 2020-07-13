@@ -3472,8 +3472,8 @@ def quantile(a, q, w=None, axis=None, out=None,
         Quantile or sequence of quantiles to compute, which must be between
         0 and 1 inclusive.
     w : array_like
-        The weights of samples. It must have the same shape with a or
-        be a 1d array for broadcast.
+        The positive weights of samples.
+        It must have the same shape with a or be a 1d array for broadcast.
         When it's a 1d array, axis should be an integer or None and
         w.size == a.shape[axis] or w.size == a.size.
         If this is set to None, all the weights are equal to each other.
@@ -3590,7 +3590,7 @@ def quantile(a, q, w=None, axis=None, out=None,
                 w = np.broadcast_to(w, (a.ndim-1) * (1,) + w.shape)
                 w = w.swapaxes(-1, axis) * np.ones(a.shape)
         if not _weight_is_valid(w):
-            raise ValueError("All the weights must be > 0")
+            raise ValueError("All the weights must be positive")
 
     return _quantile_unchecked(
         a, q, w, axis, out, overwrite_input, interpolation, keepdims)
@@ -3630,13 +3630,15 @@ def _quantile_is_valid(q):
 
 def _weight_is_valid(w):
     # Avoid expensive reductions, relevant for arrays with < O(1000) elements
+    if np.count_nonzero(np.isnan(w)):
+        return False
     if w.ndim == 1 and w.size < 10:
         for i in range(w.size):
-            if w[i] < 0.0:
+            if w[i] <= 0.0:
                 return False
     else:
         # Faster than any()
-        if np.count_nonzero(w < 0.0):
+        if np.count_nonzero(w <= 0.0):
             return False
     
     return True
