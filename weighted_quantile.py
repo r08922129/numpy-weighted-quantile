@@ -3264,13 +3264,13 @@ def _median(a, axis=None, out=None, overwrite_input=False):
         return mean(part[indexer], axis=axis, out=out)
 
 
-def _percentile_dispatcher(a, q, axis=None, out=None, overwrite_input=None,
+def _percentile_dispatcher(a, q, w=None, axis=None, out=None, overwrite_input=None,
                            interpolation=None, keepdims=None):
-    return (a, q, out)
+    return (a, q, w, out)
 
 
 @array_function_dispatch(_percentile_dispatcher)
-def percentile(a, q, axis=None, out=None,
+def percentile(a, q, w=None, axis=None, out=None,
                overwrite_input=False, interpolation='linear', keepdims=False):
     """
     Compute the q-th percentile of the data along the specified axis.
@@ -3395,7 +3395,7 @@ def percentile(a, q, axis=None, out=None,
     if not _quantile_is_valid(q):
         raise ValueError("Percentiles must be in the range [0, 100]")
     return _quantile_unchecked(
-        a, q, axis, out, overwrite_input, interpolation, keepdims)
+        a, q, w, axis, out, overwrite_input, interpolation, keepdims)
 
 
 def _weighted_ureduce(a, func, w, **kwargs):
