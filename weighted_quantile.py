@@ -3596,7 +3596,7 @@ def quantile(a, q, w=None, axis=None, out=None,
         a, q, w, axis, out, overwrite_input, interpolation, keepdims)
 
 
-def _quantile_unchecked(a, q, w, axis=None, out=None,
+def _quantile_unchecked(a, q, w=None, axis=None, out=None,
                         overwrite_input=False, interpolation='linear',
                         keepdims=False):
     """Assumes that q is in [0, 1], and is an ndarray"""
