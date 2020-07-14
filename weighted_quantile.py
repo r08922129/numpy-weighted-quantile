@@ -3266,7 +3266,7 @@ def _median(a, axis=None, out=None, overwrite_input=False):
 
 def _percentile_dispatcher(a, q, axis=None, out=None, overwrite_input=None,
                            interpolation=None, keepdims=None, w=None):
-    return (a, q, w, out)
+    return (a, q, out, w)
 
 
 @array_function_dispatch(_percentile_dispatcher)
@@ -3455,7 +3455,7 @@ def _weighted_ureduce(a, func, w, **kwargs):
 def quantile_dispatcher(a, q, axis=None, out=None,
                         overwrite_input=None, interpolation=None,
                         keepdims=None, w=None):
-    return (a, q, w, out)
+    return (a, q, out, w)
 
 
 @array_function_dispatch(quantile_dispatcher)
