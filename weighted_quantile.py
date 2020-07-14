@@ -3264,14 +3264,14 @@ def _median(a, axis=None, out=None, overwrite_input=False):
         return mean(part[indexer], axis=axis, out=out)
 
 
-def _percentile_dispatcher(a, q, w=None, axis=None, out=None, overwrite_input=None,
-                           interpolation=None, keepdims=None):
+def _percentile_dispatcher(a, q, axis=None, out=None, overwrite_input=None,
+                           interpolation=None, keepdims=None, w=None):
     return (a, q, w, out)
 
 
 @array_function_dispatch(_percentile_dispatcher)
-def percentile(a, q, w=None, axis=None, out=None,
-               overwrite_input=False, interpolation='linear', keepdims=False):
+def percentile(a, q, axis=None, out=None,
+               overwrite_input=False, interpolation='linear', keepdims=False, w=None):
     """
     Compute the q-th percentile of the data along the specified axis.
     Returns the q-th percentile(s) of the array elements.
@@ -3452,16 +3452,16 @@ def _weighted_ureduce(a, func, w, **kwargs):
     return r, keepdim
 
 
-def quantile_dispatcher(a, q, w=None, axis=None, out=None,
+def quantile_dispatcher(a, q, axis=None, out=None,
                         overwrite_input=None, interpolation=None,
-                        keepdims=None):
+                        keepdims=None, w=None):
     return (a, q, w, out)
 
 
 @array_function_dispatch(quantile_dispatcher)
-def quantile(a, q, w=None, axis=None, out=None,
+def quantile(a, q, axis=None, out=None,
              overwrite_input=False, interpolation='linear',
-             keepdims=False):
+             keepdims=False, w=None):
     """
     Compute the q-th weighted quantile of the data along the specified axis.
     Parameters
