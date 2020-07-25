@@ -3665,7 +3665,7 @@ def percentile(a, q, axis=None, out=None,
                keepdims=False, w=None):
     """
     Compute the q-th percentile of the data along the specified axis.
-    
+
     Returns the q-th percentile(s) of the array elements.
 
     Parameters
@@ -4016,6 +4016,7 @@ def quantile(a, q, axis=None, out=None,
                     )
                 w = np.broadcast_to(w, (a.ndim-1) * (1,) + w.shape)
                 w = w.swapaxes(-1, axis) * np.ones(a.shape)
+
         if not _weight_is_valid(w):
             raise ValueError("All the weights must be positive")
 
@@ -4093,11 +4094,11 @@ def _find_weighted_index(sk, qsn, interpolation='linear'):
     indices = []
     
     for j in range(_qsn.shape[1]):
+        lo = 0
         for i in range(_qsn.shape[0]):
 
             qsn_j = _qsn[i, j]
             sk_j = _sk[:, j]
-            lo = 0
             hi = Nx-1
             found = False
             # Find Sk by BinarySearch
@@ -4198,6 +4199,8 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None,
     sn = sk[-1,...]
     # Reshape qp to broadcast
     qp = np.atleast_1d(q)
+    sorted_index_q = np.argsort(qp)
+    qp = qp[sorted_index_q]
     qsn = qp.reshape((-1,) + (1,)*(sn.ndim)) * sn # (q,d1,d2,...,dk)
     # Round fractional indices according to interpolation method
     indices = _find_weighted_index(sk, qsn, interpolation)
@@ -4240,11 +4243,11 @@ def _weighted_quantile_ureduce_func(a, w, q, axis=None, out=None,
     # If any slice contained a nan, then all results on that slice are also nan
     if np.any(n):
         r[..., n] = a.dtype.type(np.nan)
+        
+    recover_index_q = np.argsort(sorted_index_q)
+    r = r[recover_index_q]
 
-    if d == 0:
-        return r[0]
-    else:
-        return r
+    return r[0] if d == 0 else r
 
 
 def _quantile_ureduce_func(a, q, axis=None, out=None, overwrite_input=False,
